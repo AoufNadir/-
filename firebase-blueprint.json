@@ -1,0 +1,478 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private authenticated user profile keyed by Firebase Auth UID.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "photoURL": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastLoginAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "displayName", "createdAt", "lastLoginAt"]
+    },
+    "PlatformAdmin": {
+      "title": "PlatformAdmin",
+      "description": "Registry of platform super-administrators.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "createdAt"]
+    },
+    "Tenant": {
+      "title": "Tenant",
+      "description": "An independent printing workshop tenant managed by the platform owner.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "slug": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9\\-]+$"
+        },
+        "city": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "phone": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "plan": {
+          "type": "string",
+          "enum": ["starter", "pro", "enterprise"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "suspended", "trial"]
+        },
+        "expiresAt": {
+          "type": "string",
+          "maxLength": 32,
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "maxUsers": {
+          "type": "integer"
+        },
+        "ownerEmail": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "seedMode": {
+          "type": "string",
+          "enum": ["blank", "demo"]
+        },
+        "createdByUid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "slug",
+        "plan",
+        "status",
+        "expiresAt",
+        "maxUsers",
+        "ownerEmail",
+        "seedMode",
+        "createdByUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "TenantMember": {
+      "title": "TenantMember",
+      "description": "Authorized member belonging to a specific printing workshop tenant.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "tenantId": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "role": {
+          "type": "string",
+          "enum": ["manager", "sales", "accountant", "designer", "production"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "disabled"]
+        },
+        "inviteId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "uid",
+        "tenantId",
+        "email",
+        "displayName",
+        "role",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "UserMembershipIndex": {
+      "title": "UserMembershipIndex",
+      "description": "Per-user lookup index of workshops the user belongs to (for zero-cost secure list queries).",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "tenantId": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9\\-]+$"
+        },
+        "tenantName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "role": {
+          "type": "string",
+          "enum": ["manager", "sales", "accountant", "designer", "production"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "disabled"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "tenantId", "tenantName", "role", "status", "createdAt", "updatedAt"]
+    },
+    "TenantInvite": {
+      "title": "TenantInvite",
+      "description": "Email-addressed invitation allowing a verified Google user to claim membership in a tenant.",
+      "type": "object",
+      "properties": {
+        "inviteId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "tenantId": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9\\-]+$"
+        },
+        "tenantName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254
+        },
+        "fullName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "role": {
+          "type": "string",
+          "enum": ["manager", "sales", "accountant", "designer", "production"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "accepted", "revoked"]
+        },
+        "invitedByUid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "inviteId",
+        "tenantId",
+        "tenantName",
+        "email",
+        "role",
+        "status",
+        "invitedByUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "WorkspaceShard": {
+      "title": "WorkspaceShard",
+      "description": "Domain-partitioned native Firestore document holding a tenant's operational and accounting records.",
+      "type": "object",
+      "properties": {
+        "tenantId": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9\\-]+$"
+        },
+        "shard": {
+          "type": "string",
+          "enum": ["meta", "people", "catalog", "orders", "finance", "inventory"]
+        },
+        "version": {
+          "type": "integer"
+        },
+        "payload": {
+          "type": "object"
+        },
+        "updatedByUid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["tenantId", "shard", "version", "payload", "updatedByUid", "updatedAt"]
+    },
+    "TenantFile": {
+      "title": "TenantFile",
+      "description": "Tenant-isolated uploaded image or attachment persisted in Firestore.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "tenantId": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9\\-]+$"
+        },
+        "fileName": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "mimeType": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "fileSize": {
+          "type": "integer"
+        },
+        "dataUrl": {
+          "type": "string",
+          "maxLength": 750000
+        },
+        "attachedToDoctype": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "attachedToName": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "ownerUid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerEmail": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "tenantId",
+        "fileName",
+        "mimeType",
+        "fileSize",
+        "dataUrl",
+        "ownerUid",
+        "ownerEmail",
+        "createdAt"
+      ]
+    },
+    "PlatformAuditLog": {
+      "title": "PlatformAuditLog",
+      "description": "Immutable Super Admin audit trail for tenant provisioning and subscription lifecycle.",
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "tenantId": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "tenantName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "actorUid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "actorEmail": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254
+        },
+        "details": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["action", "actorUid", "actorEmail", "details", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user profiles isolated to the owner or Super Admin."
+    },
+    "/admins/{adminUid}": {
+      "schema": { "$ref": "#/entities/PlatformAdmin" },
+      "description": "Platform Super Admin registry."
+    },
+    "/tenants/{tenantId}": {
+      "schema": { "$ref": "#/entities/Tenant" },
+      "description": "Independent printing workshops and subscription state."
+    },
+    "/tenants/{tenantId}/members/{memberUid}": {
+      "schema": { "$ref": "#/entities/TenantMember" },
+      "description": "Active and disabled staff memberships bound to a workshop."
+    },
+    "/tenants/{tenantId}/workspace/{shardId}": {
+      "schema": { "$ref": "#/entities/WorkspaceShard" },
+      "description": "Domain-sharded operational and accounting data strictly isolated to active tenant members."
+    },
+    "/tenants/{tenantId}/files/{fileId}": {
+      "schema": { "$ref": "#/entities/TenantFile" },
+      "description": "Tenant-isolated logos and order attachments."
+    },
+    "/user_memberships/{membershipKey}": {
+      "schema": { "$ref": "#/entities/UserMembershipIndex" },
+      "description": "User-scoped index of workshops they belong to."
+    },
+    "/invites/{inviteId}": {
+      "schema": { "$ref": "#/entities/TenantInvite" },
+      "description": "Pending and accepted invitations addressed by verified email."
+    },
+    "/platform_audit_logs/{logId}": {
+      "schema": { "$ref": "#/entities/PlatformAuditLog" },
+      "description": "Immutable Super Admin audit log."
+    }
+  }
+}

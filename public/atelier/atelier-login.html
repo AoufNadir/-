@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2B1B4A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="رقمي">
+<title>تسجيل الدخول — رقمي</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/assets/atelier/atelier/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/atelier/atelier/apple-touch-icon.png">
+<link rel="stylesheet" href="/assets/atelier/atelier/fonts/cairo.css">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; font-family: Cairo, "Segoe UI", Tahoma, sans-serif; color: #1F2430; background: #F6F7F9; }
+  .lg { display: flex; min-height: 100%; }
+  .lg-form-side { width: 560px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; padding: 32px 24px; background: #FFFFFF; }
+  .lg-form { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 18px; }
+  .lg-form h1 { margin: 0; font-size: 26px; font-weight: 700; color: #1F2430; }
+  .lg-sub { color: #667085; margin-top: 4px; font-size: 14px; line-height: 1.7; }
+  .lg-google-btn {
+    height: 50px; border: 1px solid #D0D5DD; border-radius: 10px; background: #FFFFFF; color: #1F2430;
+    font: inherit; font-weight: 600; font-size: 15px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, .05); transition: background .15s, border-color .15s, transform .08s;
+  }
+  .lg-google-btn:hover:not(:disabled) { background: #F9FAFB; border-color: #4F35D2; }
+  .lg-google-btn:active:not(:disabled) { transform: scale(.99); }
+  .lg-google-btn:disabled { opacity: .65; cursor: default; }
+  .lg-btn-sec {
+    height: 44px; border: 1px solid #E4E7EC; border-radius: 10px; background: #F6F7F9; color: #344054;
+    font: inherit; font-weight: 600; font-size: 14px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .lg-btn-sec:hover { background: #ECEEF2; }
+  .lg-btn-pwa {
+    height: 42px; border: 1px solid rgba(79, 53, 210, .28); border-radius: 10px;
+    background: rgba(79, 53, 210, .06); color: #4F35D2;
+    font: inherit; font-weight: 600; font-size: 13.5px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .lg-btn-pwa:hover { background: rgba(79, 53, 210, .12); }
+  .lg-msg { padding: 12px 14px; border-radius: 10px; font-size: 13.5px; line-height: 1.75; }
+  .lg-msg.err { background: #FEF3F2; color: #B42318; border: 1px solid #FECDCA; }
+  .lg-msg.warn { background: #FFFAEB; color: #B54708; border: 1px solid #FEDF89; }
+  .lg-msg.ok { background: #ECFDF3; color: #067647; border: 1px solid #ABEFC6; }
+  .lg-gate { padding: 18px; border-radius: 12px; border: 1px solid #E4E7EC; background: #F9FAFB; display: flex; flex-direction: column; gap: 12px; }
+  .lg-gate h2 { margin: 0; font-size: 17px; color: #1F2430; }
+  .lg-gate p { margin: 0; font-size: 13.5px; color: #475467; line-height: 1.8; }
+  .lg-email-chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; background: #FFFFFF; border: 1px solid #E4E7EC; font-size: 13px; color: #344054; direction: ltr; align-self: flex-start; }
+  .lg-points { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border-radius: 10px; background: #F6F7F9; border: 1px solid #EAECF0; font-size: 13px; color: #475467; }
+  .lg-points div { display: flex; align-items: center; gap: 8px; }
+  .lg-points svg { flex-shrink: 0; color: #4F35D2; }
+  .lg-foot { font-size: 12.5px; color: #667085; text-align: center; line-height: 1.7; }
+  .lg-brand { flex: 1; background: #2B1B4A; color: #fff; display: flex; flex-direction: column; justify-content: space-between; padding: 56px 64px; }
+  .lg-logo { display: flex; align-items: center; gap: 14px; }
+  .lg-logo b { display: block; font-size: 40px; line-height: 1.1; }
+  .lg-logo span { color: #B9AEDB; font-size: 15px; }
+  .lg-tag { max-width: 460px; }
+  .lg-tag b { display: block; font-size: 30px; line-height: 1.5; }
+  .lg-tag p { color: #D6CEEB; line-height: 1.9; margin: 14px 0 0; font-size: 15px; }
+  .lg-where { color: #9C91C4; font-size: 13px; }
+  .ios-backdrop { position: fixed; inset: 0; background: rgba(16,24,40,.52); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 99; }
+  .ios-card { width: 100%; max-width: 380px; background: #fff; border-radius: 14px; padding: 22px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 20px 50px rgba(16,24,40,.22); }
+  .ios-card h3 { margin: 0; font-size: 17px; }
+  .ios-card ol { margin: 0; padding-right: 20px; color: #475467; font-size: 14px; line-height: 1.9; }
+  [hidden] { display: none !important; }
+  @media (max-width: 900px) {
+    .lg { flex-direction: column-reverse; }
+    .lg-form-side { width: auto; flex: 1; align-items: flex-start; padding-top: 28px; }
+    .lg-brand { flex: 0; padding: 24px; gap: 0; }
+    .lg-tag, .lg-where { display: none; }
+    .lg-logo b { font-size: 28px; }
+  }
+</style>
+</head>
+<body>
+<main class="lg">
+  <section class="lg-form-side">
+    <div class="lg-form">
+      <div>
+        <h1>مرحباً بك في رقمي</h1>
+        <div class="lg-sub">سجّل الدخول بحساب Google المفعّل للوصول إلى مطبعتك من أي هاتف أو حاسوب.</div>
+      </div>
+
+      <div id="loading-box" class="lg-msg ok" hidden>جارٍ التحقق من حسابك وتجهيز المطبعة…</div>
+      <div id="err-box" class="lg-msg err" role="alert" hidden></div>
+
+      <!-- Standard Google Sign-In View -->
+      <div id="signin-view" style="display:flex;flex-direction:column;gap:14px">
+        <button id="google-btn" type="button" class="lg-google-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.2-2.27H12v4.51h6.45c-.28 1.48-1.12 2.74-2.39 3.58v2.98h3.87c2.26-2.08 3.56-5.15 3.56-8.8z"/>
+            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.07 7.93-2.93l-3.87-2.98c-1.07.72-2.44 1.15-4.06 1.15-3.12 0-5.77-2.11-6.71-4.95H1.29v3.08C3.26 21.3 7.31 24 12 24z"/>
+            <path fill="#FBBC05" d="M5.29 14.29A7.19 7.19 0 0 1 4.91 12c0-.8.14-1.57.38-2.29V6.63H1.29A11.98 11.98 0 0 0 0 12c0 1.94.46 3.77 1.29 5.37l4-3.08z"/>
+            <path fill="#EA4335" d="M12 4.76c1.76 0 3.34.61 4.58 1.8l3.44-3.44C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.63l4 3.08c.94-2.84 3.59-4.95 6.71-4.95z"/>
+          </svg>
+          <span>المتابعة بحساب Google</span>
+        </button>
+
+        <div class="lg-points">
+          <div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>عزل تام لبيانات وحسابات كل مطبعة على حدة</span>
+          </div>
+          <div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+            <span>يعمل على الهاتف كتطبيق مستقل ومن أي حاسوب</span>
+          </div>
+          <div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+            <span>مزامنة فورية للطلبات والخزينة والمخزون بين الفريق</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Closed SaaS Gate (Uninvited / Suspended / Expired) -->
+      <div id="gate-view" class="lg-gate" hidden>
+        <h2 id="gate-title">الحساب غير مفعّل</h2>
+        <div id="gate-email" class="lg-email-chip"></div>
+        <p id="gate-desc"></p>
+        <button id="gate-signout" type="button" class="lg-btn-sec">تبديل الحساب / تسجيل الخروج</button>
+      </div>
+
+      <!-- In-App PWA Install Button -->
+      <button id="pwa-install-btn" type="button" class="lg-btn-pwa" hidden>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span id="pwa-install-lbl">تثبيت تطبيق رقمي على الهاتف</span>
+      </button>
+
+      <div class="lg-foot">
+        منصة رقمي نظام سحابي خاص بالمطابع المشتركة. لتفعيل مطبعتك أو إضافة موظف، تواصل مع إدارة المنصة أو مدير مطبعتك.
+      </div>
+    </div>
+  </section>
+
+  <aside class="lg-brand">
+    <div class="lg-logo">
+      <svg width="64" height="64" viewBox="0 0 44 44" aria-hidden="true">
+        <rect x="8" y="6" width="28" height="9" rx="1" fill="#D4F06A"/>
+        <rect x="8" y="6" width="9" height="32" rx="1" fill="#9B87F5"/>
+        <rect x="17" y="20" width="16" height="7" rx="1" fill="#D4F06A"/>
+        <rect x="24" y="30" width="12" height="8" rx="1" fill="#9B87F5"/>
+      </svg>
+      <div><b>رقمي</b><span>تتبّع مطبعتك رقميًا</span></div>
+    </div>
+    <div class="lg-tag">
+      <b>الطلبات والعملاء والمال، في مكان واحد.</b>
+      <p>تابع كل طلب من الاستلام إلى التحصيل، مع فريقك، من الحاسوب أو الهاتف في أي وقت ومن أي مكان.</p>
+    </div>
+    <div class="lg-where">{{ workshop }}</div>
+  </aside>
+</main>
+
+<div id="ios-modal" class="ios-backdrop" hidden>
+  <div class="ios-card" role="dialog" aria-modal="true" aria-labelledby="ios-h">
+    <h3 id="ios-h">تثبيت تطبيق رقمي على iPhone / iPad</h3>
+    <ol>
+      <li>اضغط على زر <b>المشاركة (Share)</b> في شريط متصفح Safari بالأسفل.</li>
+      <li>مرّر للأسفل ثم اختر <b>إضافة إلى الشاشة الرئيسية (Add to Home Screen)</b>.</li>
+      <li>اضغط <b>إضافة</b> ليظهر تطبيق «رقمي» مثل أي تطبيق أصلي على هاتفك.</li>
+    </ol>
+    <button id="ios-close" type="button" class="lg-btn-sec">حسناً، فهمت</button>
+  </div>
+</div>
+
+<script type="module" src="/assets/atelier/atelier/cloud-bridge.js?v={{ build }}"></script>
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const next = new URLSearchParams(location.search).get("redirect-to") || "/atelier";
+  const safeNext = next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/atelier-login") ? next : "/atelier";
+
+  function showErr(text) {
+    const el = $("err-box");
+    el.textContent = text || "";
+    el.hidden = !text;
+  }
+
+  function renderSession(snap) {
+    $("loading-box").hidden = snap.status !== "loading";
+    showErr(snap.status === "error" ? (snap.error || "حدث خطأ أثناء الاتصال بالسحابة") : "");
+
+    if (snap.status === "ready") {
+      location.href = safeNext;
+      return;
+    }
+
+    if (snap.status === "no_workshop" || snap.status === "suspended" || snap.status === "expired") {
+      $("signin-view").hidden = true;
+      $("gate-view").hidden = false;
+      $("gate-email").textContent = snap.user?.email || "";
+      if (snap.status === "suspended") {
+        $("gate-title").textContent = "اشتراك المطبعة معلّق حاليًا";
+        $("gate-desc").textContent = `تم تعليق الوصول مؤقتًا لمطبعة «${snap.blockedTenant?.name || "مطبعتك"}». كافة بياناتك وفواتيرك محفوظة بأمان تام — يرجى التواصل مع إدارة منصة رقمي لإعادة التفعيل.`;
+      } else if (snap.status === "expired") {
+        $("gate-title").textContent = "انتهت صلاحية الاشتراك";
+        $("gate-desc").textContent = `انتهى اشتراك مطبعة «${snap.blockedTenant?.name || "مطبعتك"}» بتاريخ ${snap.blockedTenant?.expiresAt || ""}. بياناتك محفوظة بأمان — تواصل مع إدارة رقمي لتجديد الاشتراك.`;
+      } else {
+        $("gate-title").textContent = "هذا الحساب غير مرتبط بمطبعة مفعّلة";
+        $("gate-desc").textContent = "بريدك الإلكتروني غير مضاف حاليًا لأي مطبعة. إذا كنت صاحب مطبعة، تواصل مع إدارة رقمي لتفعيل حساب مطبعتك؛ وإن كنت موظفًا، اطلب من مدير مطبعتك إضافة بريدك من الإعدادات.";
+      }
+    } else {
+      $("signin-view").hidden = false;
+      $("gate-view").hidden = true;
+    }
+  }
+
+  // Wait for cloud-bridge module
+  const waitCloud = async () => {
+    for (let i = 0; i < 60 && !window.AtelierCloud; i++) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    return window.AtelierCloud;
+  };
+
+  const cloud = await waitCloud();
+  if (cloud) {
+    cloud.subscribe(renderSession);
+    cloud.init();
+
+    // PWA Install Button wiring
+    cloud.pwa.subscribe((ps) => {
+      const btn = $("pwa-install-btn");
+      if (ps.isInstalled) {
+        btn.hidden = true;
+      } else if (ps.isInstallable) {
+        btn.hidden = false;
+        $("pwa-install-lbl").textContent = "تثبيت تطبيق رقمي على هذا الجهاز";
+      } else if (ps.isIOS) {
+        btn.hidden = false;
+        $("pwa-install-lbl").textContent = "تثبيت التطبيق على iPhone / iPad";
+      } else {
+        btn.hidden = true;
+      }
+    });
+
+    $("pwa-install-btn").addEventListener("click", async () => {
+      if (cloud.pwa.state.isInstallable) {
+        await cloud.pwa.install();
+      } else if (cloud.pwa.state.isIOS) {
+        $("ios-modal").hidden = false;
+      }
+    });
+    $("ios-close").addEventListener("click", () => { $("ios-modal").hidden = true; });
+    $("ios-modal").addEventListener("click", (e) => { if (e.target === $("ios-modal")) $("ios-modal").hidden = true; });
+
+    $("google-btn").addEventListener("click", async () => {
+      showErr("");
+      const btn = $("google-btn");
+      btn.disabled = true;
+      try {
+        await cloud.signInWithGoogle();
+      } catch (err) {
+        const msg = String(err?.message || "");
+        if (!msg.includes("popup-closed-by-user")) {
+          showErr("تعذّر إتمام تسجيل الدخول بحساب Google. تأكد من السماح بالنوافذ المنبثقة ثم حاول مجددًا.");
+        }
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    $("gate-signout").addEventListener("click", () => cloud.signOut());
+  }
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/atelier-sw.js", { scope: "/" }).catch(() => {});
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+{
+  "name": "Atelier · رقمي",
+  "description": "نظام رقمي لإدارة المطابع وورشات الطباعة — الطلبات، العملاء، الموردون، المالية، المخزون، والتقارير.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

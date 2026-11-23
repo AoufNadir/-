@@ -1,0 +1,522 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // 0. GLOBAL DEFAULT-DENY SAFETY NET
+    // =========================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // 1. PRIMITIVE & IDENTITY HELPERS
+    // =========================================================================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidTenantId(id) {
+      return id is string && id.size() >= 2 && id.size() <= 64 && id.matches('^[a-z0-9\\-]+$');
+    }
+
+    function isValidEmail(val) {
+      return val is string && val.size() >= 3 && val.size() <= 254 && val.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$');
+    }
+
+    function isValidRole(role) {
+      return role in ['manager', 'sales', 'accountant', 'designer', 'production'];
+    }
+
+    function isValidShard(shard) {
+      return shard in ['meta', 'people', 'catalog', 'orders', 'finance', 'inventory'];
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function authEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    function isSuperAdmin() {
+      return isVerified() && (
+        authEmail() == 'nadiraouf16@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function tenantDoc(tenantId) {
+      return get(/databases/$(database)/documents/tenants/$(tenantId));
+    }
+
+    function memberDoc(tenantId, uid) {
+      return get(/databases/$(database)/documents/tenants/$(tenantId)/members/$(uid));
+    }
+
+    function isTenantActive(tenantId) {
+      return exists(/databases/$(database)/documents/tenants/$(tenantId)) &&
+        tenantDoc(tenantId).data.status in ['active', 'trial'];
+    }
+
+    function isActiveTenantMember(tenantId) {
+      return isVerified() &&
+        isTenantActive(tenantId) &&
+        exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)) &&
+        memberDoc(tenantId, request.auth.uid).data.status == 'active';
+    }
+
+    function isTenantManager(tenantId) {
+      return isActiveTenantMember(tenantId) &&
+        memberDoc(tenantId, request.auth.uid).data.role == 'manager';
+    }
+
+    // =========================================================================
+    // 2. VALIDATION BLUEPRINTS (ANTI-UPDATE-GAP — NO existing()/diff() HERE)
+    // =========================================================================
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'createdAt', 'lastLoginAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'displayName', 'photoURL', 'createdAt', 'lastLoginAt']) &&
+        isValidId(data.uid) &&
+        data.uid == userId &&
+        data.uid == request.auth.uid &&
+        isValidEmail(data.email) &&
+        data.email == authEmail() &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120 &&
+        (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500)) &&
+        data.createdAt is timestamp &&
+        data.lastLoginAt is timestamp;
+    }
+
+    function isValidPlatformAdmin(data, adminUid) {
+      return data.keys().hasAll(['uid', 'email', 'createdAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'createdAt']) &&
+        isValidId(data.uid) &&
+        data.uid == adminUid &&
+        isValidEmail(data.email) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidTenant(data, tenantId) {
+      return data.keys().hasAll([
+          'id', 'name', 'slug', 'plan', 'status', 'expiresAt',
+          'maxUsers', 'ownerEmail', 'seedMode', 'createdByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'name', 'slug', 'city', 'phone', 'plan', 'status', 'expiresAt',
+          'maxUsers', 'ownerEmail', 'notes', 'seedMode', 'createdByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidTenantId(data.id) &&
+        data.id == tenantId &&
+        data.name is string && data.name.size() >= 2 && data.name.size() <= 120 &&
+        isValidTenantId(data.slug) &&
+        (!('city' in data) || (data.city is string && data.city.size() <= 80)) &&
+        (!('phone' in data) || (data.phone is string && data.phone.size() <= 40)) &&
+        data.plan in ['starter', 'pro', 'enterprise'] &&
+        data.status in ['active', 'suspended', 'trial'] &&
+        data.expiresAt is string && data.expiresAt.size() == 10 && data.expiresAt.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
+        data.maxUsers is int && data.maxUsers >= 1 && data.maxUsers <= 500 &&
+        isValidEmail(data.ownerEmail) &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 1000)) &&
+        data.seedMode in ['blank', 'demo'] &&
+        isValidId(data.createdByUid) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidTenantMember(data, tenantId, memberUid) {
+      return data.keys().hasAll([
+          'uid', 'tenantId', 'email', 'displayName', 'role', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'uid', 'tenantId', 'email', 'displayName', 'role', 'status', 'inviteId', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.uid) &&
+        data.uid == memberUid &&
+        isValidTenantId(data.tenantId) &&
+        data.tenantId == tenantId &&
+        isValidEmail(data.email) &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120 &&
+        isValidRole(data.role) &&
+        data.status in ['active', 'disabled'] &&
+        (!('inviteId' in data) || isValidId(data.inviteId)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidUserMembershipIndex(data, membershipKey) {
+      return data.keys().hasAll([
+          'uid', 'tenantId', 'tenantName', 'role', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'uid', 'tenantId', 'tenantName', 'role', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.uid) &&
+        isValidTenantId(data.tenantId) &&
+        membershipKey == (data.uid + '__' + data.tenantId) &&
+        data.tenantName is string && data.tenantName.size() >= 1 && data.tenantName.size() <= 120 &&
+        isValidRole(data.role) &&
+        data.status in ['active', 'disabled'] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidTenantInvite(data, inviteId) {
+      return data.keys().hasAll([
+          'inviteId', 'tenantId', 'tenantName', 'email', 'role', 'status', 'invitedByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'inviteId', 'tenantId', 'tenantName', 'email', 'fullName', 'role', 'status', 'invitedByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.inviteId) &&
+        data.inviteId == inviteId &&
+        isValidTenantId(data.tenantId) &&
+        data.tenantName is string && data.tenantName.size() >= 1 && data.tenantName.size() <= 120 &&
+        isValidEmail(data.email) &&
+        (!('fullName' in data) || (data.fullName is string && data.fullName.size() <= 120)) &&
+        isValidRole(data.role) &&
+        data.status in ['pending', 'accepted', 'revoked'] &&
+        isValidId(data.invitedByUid) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidWorkspaceShard(data, tenantId, shardId) {
+      return data.keys().hasAll(['tenantId', 'shard', 'version', 'payload', 'updatedByUid', 'updatedAt']) &&
+        data.keys().hasOnly(['tenantId', 'shard', 'version', 'payload', 'updatedByUid', 'updatedAt']) &&
+        isValidTenantId(data.tenantId) &&
+        data.tenantId == tenantId &&
+        isValidShard(data.shard) &&
+        data.shard == shardId &&
+        data.version is int && data.version >= 1 &&
+        data.payload is map &&
+        isValidId(data.updatedByUid) &&
+        data.updatedByUid == request.auth.uid &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidTenantFile(data, tenantId, fileId) {
+      return data.keys().hasAll([
+          'id', 'tenantId', 'fileName', 'mimeType', 'fileSize', 'dataUrl', 'ownerUid', 'ownerEmail', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'tenantId', 'fileName', 'mimeType', 'fileSize', 'dataUrl',
+          'attachedToDoctype', 'attachedToName', 'ownerUid', 'ownerEmail', 'createdAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.id == fileId &&
+        isValidTenantId(data.tenantId) &&
+        data.tenantId == tenantId &&
+        data.fileName is string && data.fileName.size() >= 1 && data.fileName.size() <= 255 &&
+        data.mimeType is string && data.mimeType.size() >= 1 && data.mimeType.size() <= 120 &&
+        data.fileSize is int && data.fileSize >= 0 && data.fileSize <= 600000 &&
+        data.dataUrl is string && data.dataUrl.size() >= 1 && data.dataUrl.size() <= 750000 &&
+        (!('attachedToDoctype' in data) || (data.attachedToDoctype is string && data.attachedToDoctype.size() <= 64)) &&
+        (!('attachedToName' in data) || (data.attachedToName is string && data.attachedToName.size() <= 128)) &&
+        isValidId(data.ownerUid) &&
+        data.ownerUid == request.auth.uid &&
+        isValidEmail(data.ownerEmail) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidPlatformAuditLog(data) {
+      return data.keys().hasAll(['action', 'actorUid', 'actorEmail', 'details', 'createdAt']) &&
+        data.keys().hasOnly(['action', 'tenantId', 'tenantName', 'actorUid', 'actorEmail', 'details', 'createdAt']) &&
+        data.action is string && data.action.size() >= 1 && data.action.size() <= 64 &&
+        (!('tenantId' in data) || (data.tenantId is string && data.tenantId.size() <= 64)) &&
+        (!('tenantName' in data) || (data.tenantName is string && data.tenantName.size() <= 120)) &&
+        isValidId(data.actorUid) &&
+        data.actorUid == request.auth.uid &&
+        isValidEmail(data.actorEmail) &&
+        data.details is string && data.details.size() >= 1 && data.details.size() <= 1000 &&
+        data.createdAt is timestamp;
+    }
+
+    // =========================================================================
+    // 3. COLLECTION RULES
+    // =========================================================================
+
+    // --- /users/{userId} (Strict PII Isolation) ---
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isSuperAdmin());
+      allow list: if isSuperAdmin();
+      allow create: if isVerified() &&
+        isValidId(userId) &&
+        isOwner(userId) &&
+        isValidUserProfile(incoming(), userId) &&
+        incoming().createdAt == request.time &&
+        incoming().lastLoginAt == request.time;
+      allow update: if isVerified() &&
+        isValidId(userId) &&
+        isValidUserProfile(incoming(), userId) &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().uid == existing().uid &&
+        incoming().lastLoginAt == request.time &&
+        (
+          isSuperAdmin() ||
+          (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'lastLoginAt']))
+        );
+      allow delete: if false;
+    }
+
+    // --- /admins/{adminUid} ---
+    match /admins/{adminUid} {
+      allow get: if isValidId(adminUid) && (isOwner(adminUid) || isSuperAdmin());
+      allow list: if isSuperAdmin();
+      allow create: if isSuperAdmin() &&
+        isValidId(adminUid) &&
+        isValidPlatformAdmin(incoming(), adminUid) &&
+        incoming().createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // --- /tenants/{tenantId} ---
+    match /tenants/{tenantId} {
+      allow get: if isValidTenantId(tenantId) && (
+        isSuperAdmin() ||
+        (isVerified() && exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)))
+      );
+      allow list: if isSuperAdmin();
+      allow create: if isSuperAdmin() &&
+        isValidTenantId(tenantId) &&
+        isValidTenant(incoming(), tenantId) &&
+        incoming().createdByUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerified() &&
+        isValidTenantId(tenantId) &&
+        isValidTenant(incoming(), tenantId) &&
+        incoming().id == existing().id &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().createdByUid == existing().createdByUid &&
+        incoming().updatedAt == request.time &&
+        (
+          isSuperAdmin() ||
+          (
+            isTenantManager(tenantId) &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['name', 'city', 'phone', 'updatedAt'])
+          )
+        );
+      allow delete: if isSuperAdmin() && isValidTenantId(tenantId);
+
+      // --- /tenants/{tenantId}/members/{memberUid} ---
+      match /members/{memberUid} {
+        allow get: if isValidTenantId(tenantId) && isValidId(memberUid) && (
+          isSuperAdmin() ||
+          isOwner(memberUid) ||
+          isActiveTenantMember(tenantId)
+        );
+        allow list: if isSuperAdmin() || (
+          isVerified() && resource.data.tenantId == tenantId && resource.data.uid == request.auth.uid
+        );
+        allow create: if isVerified() &&
+          isValidTenantId(tenantId) &&
+          isValidId(memberUid) &&
+          isValidTenantMember(incoming(), tenantId, memberUid) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          exists(/databases/$(database)/documents/tenants/$(tenantId)) &&
+          (
+            isSuperAdmin() ||
+            (
+              // Atomic invite redemption: user claims membership ONLY via a matching pending invite
+              isOwner(memberUid) &&
+              'inviteId' in incoming() &&
+              exists(/databases/$(database)/documents/invites/$(incoming().inviteId)) &&
+              get(/databases/$(database)/documents/invites/$(incoming().inviteId)).data.status == 'pending' &&
+              get(/databases/$(database)/documents/invites/$(incoming().inviteId)).data.tenantId == tenantId &&
+              get(/databases/$(database)/documents/invites/$(incoming().inviteId)).data.email == authEmail() &&
+              get(/databases/$(database)/documents/invites/$(incoming().inviteId)).data.role == incoming().role &&
+              incoming().email == authEmail() &&
+              incoming().status == 'active' &&
+              getAfter(/databases/$(database)/documents/invites/$(incoming().inviteId)).data.status == 'accepted'
+            )
+          );
+        allow update: if isVerified() &&
+          isValidTenantId(tenantId) &&
+          isValidId(memberUid) &&
+          isValidTenantMember(incoming(), tenantId, memberUid) &&
+          incoming().uid == existing().uid &&
+          incoming().tenantId == existing().tenantId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          (
+            isSuperAdmin() ||
+            (
+              isTenantManager(tenantId) &&
+              memberUid != request.auth.uid &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['role', 'status', 'displayName', 'updatedAt'])
+            )
+          );
+        allow delete: if isSuperAdmin() && isValidTenantId(tenantId) && isValidId(memberUid);
+      }
+
+      // --- /tenants/{tenantId}/workspace/{shardId} (Master Gate Enforced) ---
+      match /workspace/{shardId} {
+        allow get: if isValidTenantId(tenantId) && isValidShard(shardId) && (
+          isSuperAdmin() || isActiveTenantMember(tenantId)
+        );
+        allow list: if false;
+        allow create: if isVerified() &&
+          isValidTenantId(tenantId) &&
+          isValidShard(shardId) &&
+          isValidWorkspaceShard(incoming(), tenantId, shardId) &&
+          incoming().updatedAt == request.time &&
+          exists(/databases/$(database)/documents/tenants/$(tenantId)) &&
+          (isSuperAdmin() || isActiveTenantMember(tenantId));
+        allow update: if isVerified() &&
+          isValidTenantId(tenantId) &&
+          isValidShard(shardId) &&
+          isValidWorkspaceShard(incoming(), tenantId, shardId) &&
+          incoming().tenantId == existing().tenantId &&
+          incoming().shard == existing().shard &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['version', 'payload', 'updatedByUid', 'updatedAt']) &&
+          (isSuperAdmin() || isActiveTenantMember(tenantId));
+        allow delete: if isSuperAdmin() && isValidTenantId(tenantId) && isValidShard(shardId);
+      }
+
+      // --- /tenants/{tenantId}/files/{fileId} (Master Gate Enforced) ---
+      match /files/{fileId} {
+        allow get: if isValidTenantId(tenantId) && isValidId(fileId) && (
+          isSuperAdmin() || isActiveTenantMember(tenantId)
+        );
+        allow list: if false;
+        allow create: if isVerified() &&
+          isValidTenantId(tenantId) &&
+          isValidId(fileId) &&
+          isValidTenantFile(incoming(), tenantId, fileId) &&
+          incoming().createdAt == request.time &&
+          exists(/databases/$(database)/documents/tenants/$(tenantId)) &&
+          (isSuperAdmin() || isActiveTenantMember(tenantId));
+        allow update: if false;
+        allow delete: if isVerified() &&
+          isValidTenantId(tenantId) &&
+          isValidId(fileId) &&
+          (isSuperAdmin() || isActiveTenantMember(tenantId));
+      }
+    }
+
+    // --- /user_memberships/{membershipKey} (Zero-Cost Secure List Index) ---
+    match /user_memberships/{membershipKey} {
+      allow get: if isValidId(membershipKey) && (
+        isSuperAdmin() || (isSignedIn() && existing().uid == request.auth.uid)
+      );
+      allow list: if isSuperAdmin() || (
+        isSignedIn() && resource.data.uid == request.auth.uid
+      );
+      allow create: if isVerified() &&
+        isValidId(membershipKey) &&
+        isValidUserMembershipIndex(incoming(), membershipKey) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/tenants/$(incoming().tenantId)) &&
+        (
+          isSuperAdmin() ||
+          (
+            incoming().uid == request.auth.uid &&
+            existsAfter(/databases/$(database)/documents/tenants/$(incoming().tenantId)/members/$(request.auth.uid)) &&
+            getAfter(/databases/$(database)/documents/tenants/$(incoming().tenantId)/members/$(request.auth.uid)).data.role == incoming().role &&
+            getAfter(/databases/$(database)/documents/tenants/$(incoming().tenantId)/members/$(request.auth.uid)).data.status == incoming().status
+          )
+        );
+      allow update: if isVerified() &&
+        isValidId(membershipKey) &&
+        isValidUserMembershipIndex(incoming(), membershipKey) &&
+        incoming().uid == existing().uid &&
+        incoming().tenantId == existing().tenantId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          isSuperAdmin() ||
+          (
+            isTenantManager(incoming().tenantId) &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['role', 'status', 'tenantName', 'updatedAt'])
+          )
+        );
+      allow delete: if isSuperAdmin() && isValidId(membershipKey);
+    }
+
+    // --- /invites/{inviteId} (Email-Scoped Invitations) ---
+    match /invites/{inviteId} {
+      allow get: if isValidId(inviteId) && (
+        isSuperAdmin() ||
+        (isVerified() && existing().email == authEmail()) ||
+        isTenantManager(existing().tenantId)
+      );
+      allow list: if isSuperAdmin() || (
+        isVerified() && resource.data.email == authEmail()
+      );
+      allow create: if isVerified() &&
+        isValidId(inviteId) &&
+        isValidTenantInvite(incoming(), inviteId) &&
+        incoming().invitedByUid == request.auth.uid &&
+        incoming().status == 'pending' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/tenants/$(incoming().tenantId)) &&
+        (isSuperAdmin() || isTenantManager(incoming().tenantId));
+      allow update: if isVerified() &&
+        isValidId(inviteId) &&
+        isValidTenantInvite(incoming(), inviteId) &&
+        incoming().inviteId == existing().inviteId &&
+        incoming().tenantId == existing().tenantId &&
+        incoming().email == existing().email &&
+        incoming().invitedByUid == existing().invitedByUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          isSuperAdmin() ||
+          (
+            // Terminal state lock: only pending invites may be accepted or revoked
+            existing().status == 'pending' &&
+            (
+              // Action: Invitee accepts invite atomically with member creation
+              (
+                existing().email == authEmail() &&
+                incoming().status == 'accepted' &&
+                incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) &&
+                existsAfter(/databases/$(database)/documents/tenants/$(existing().tenantId)/members/$(request.auth.uid))
+              ) ||
+              // Action: Tenant manager revokes or updates role of pending invite
+              (
+                isTenantManager(existing().tenantId) &&
+                incoming().status in ['pending', 'revoked'] &&
+                incoming().diff(existing()).affectedKeys().hasOnly(['status', 'role', 'fullName', 'updatedAt'])
+              )
+            )
+          )
+        );
+      allow delete: if isSuperAdmin() && isValidId(inviteId);
+    }
+
+    // --- /platform_audit_logs/{logId} (Immutable Super Admin Trail) ---
+    match /platform_audit_logs/{logId} {
+      allow get: if isValidId(logId) && isSuperAdmin();
+      allow list: if isSuperAdmin();
+      allow create: if isSuperAdmin() &&
+        isValidId(logId) &&
+        isValidPlatformAuditLog(incoming()) &&
+        incoming().createdAt == request.time;
+      allow update, delete: if false;
+    }
+  }
+}
